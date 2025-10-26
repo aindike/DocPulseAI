@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DocPulseAI" constructor="DocumentAnalyzer" version="1.0.0" display-name-key="DocumentAnalyzer" description-key="AI-Powered Document Analyzer with drag-drop upload" control-type="standard" >
+  <control namespace="DocPulseAI" constructor="DocumentAnalyzer" version="1.0.1" display-name-key="DocumentAnalyzer" description-key="AI-Powered Document Analyzer with drag-drop upload" control-type="standard" >
     <external-service-usage enabled="true">
       <domain>*.openai.azure.com</domain>
       <domain>*.cognitiveservices.azure.com</domain>
     </external-service-usage>
     
     <!-- Bound field to store document summary -->
-    <property name="documentSummary" display-name-key="Document Summary" description-key="Field to store the document analysis summary" of-type="SingleLine.Text" usage="bound" required="true" />
+    <property name="documentSummary" display-name-key="Document Summary" description-key="Field to store the document analysis summary" of-type="Multiple" usage="bound" required="true" />
     
     <!-- Azure OpenAI Configuration -->
-    <property name="azureEndpoint" display-name-key="Azure OpenAI Endpoint" description-key="Azure OpenAI endpoint URL (e.g., https://your-resource.openai.azure.com/)" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="azureEndpoint" display-name-key="Azure OpenAI Endpoint" description-key="Azure OpenAI endpoint URL (e.g., https://your-resource.openai.azure.com/)" of-type="Multiple" usage="input" required="false" />
     <property name="azureApiKey" display-name-key="Azure API Key" description-key="Azure OpenAI API Key (use environment variable reference)" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="deploymentName" display-name-key="Deployment Name" description-key="Azure OpenAI deployment/model name (e.g., gpt-4o)" of-type="SingleLine.Text" usage="input" required="false" default-value="gpt-4o" />
     
     <!-- Azure Document Intelligence (Form Recognizer) Configuration -->
-    <property name="documentIntelligenceEndpoint" display-name-key="Document Intelligence Endpoint" description-key="Azure Document Intelligence endpoint URL" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="documentIntelligenceEndpoint" display-name-key="Document Intelligence Endpoint" description-key="Azure Document Intelligence endpoint URL" of-type="Multiple" usage="input" required="false" />
     <property name="documentIntelligenceKey" display-name-key="Document Intelligence Key" description-key="Azure Document Intelligence API Key" of-type="SingleLine.Text" usage="input" required="false" />
     
     <!-- Display Configuration -->

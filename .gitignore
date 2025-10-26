@@ -1,0 +1,58 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+out/
+dist/
+bin/
+obj/
+generated/
+*.map
+
+# PCF specific
+*.pcfproj.user
+solution/
+
+# IDE
+.vscode/
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# Power Platform
+*.zip
+*.cab
+Solution.xml
+
+# Azure
+local.settings.json
+*.azureauth
+
+# Debug
+debug/
+*.pdb

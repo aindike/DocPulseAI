@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="DocPulseAI" constructor="DocumentAnalyzer" version="1.0.0" display-name-key="DocumentAnalyzer" description-key="AI-Powered Document Analyzer with drag-drop upload" control-type="standard" >
+    <external-service-usage enabled="true">
+      <domain>*.openai.azure.com</domain>
+      <domain>*.cognitiveservices.azure.com</domain>
+    </external-service-usage>
+    
+    <!-- Bound field to store document summary -->
+    <property name="documentSummary" display-name-key="Document Summary" description-key="Field to store the document analysis summary" of-type="SingleLine.Text" usage="bound" required="true" />
+    
+    <!-- Azure OpenAI Configuration -->
+    <property name="azureEndpoint" display-name-key="Azure OpenAI Endpoint" description-key="Azure OpenAI endpoint URL (e.g., https://your-resource.openai.azure.com/)" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="azureApiKey" display-name-key="Azure API Key" description-key="Azure OpenAI API Key (use environment variable reference)" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="deploymentName" display-name-key="Deployment Name" description-key="Azure OpenAI deployment/model name (e.g., gpt-4o)" of-type="SingleLine.Text" usage="input" required="false" default-value="gpt-4o" />
+    
+    <!-- Azure Document Intelligence (Form Recognizer) Configuration -->
+    <property name="documentIntelligenceEndpoint" display-name-key="Document Intelligence Endpoint" description-key="Azure Document Intelligence endpoint URL" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="documentIntelligenceKey" display-name-key="Document Intelligence Key" description-key="Azure Document Intelligence API Key" of-type="SingleLine.Text" usage="input" required="false" />
+    
+    <!-- Display Configuration -->
+    <property name="maxFileSizeMB" display-name-key="Max File Size (MB)" description-key="Maximum file size in MB" of-type="Whole.None" usage="input" required="false" default-value="10" />
+    <property name="acceptedFileTypes" display-name-key="Accepted File Types" description-key="Comma-separated file extensions (e.g., .pdf,.png,.jpg,.jpeg)" of-type="SingleLine.Text" usage="input" required="false" default-value=".pdf,.png,.jpg,.jpeg" />
+    <!--
+      Property node's of-type attribute can be of-type-group attribute.
+      Example:
+      <type-group name="numbers">
+        <type>Whole.None</type>
+        <type>Currency</type>
+        <type>FP</type>
+        <type>Decimal</type>
+      </type-group>
+      <property name="sampleProperty" display-name-key="Property_Display_Key" description-key="Property_Desc_Key" of-type-group="numbers" usage="bound" required="true" />
+    -->
+    
+    <resources>
+      <code path="index.ts" order="1"/>
+      <css path="css/DocumentAnalyzer.css" order="1" />
+    </resources>
+    
+    <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+      <uses-feature name="Utility" required="true" />
+    </feature-usage>
+  </control>
+</manifest>
+    -->
+  </control>
+</manifest>

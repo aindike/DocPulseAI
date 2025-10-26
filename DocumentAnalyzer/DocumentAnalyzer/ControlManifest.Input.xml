@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DocPulseAI" constructor="DocumentAnalyzer" version="1.0.1" display-name-key="DocumentAnalyzer" description-key="AI-Powered Document Analyzer with drag-drop upload" control-type="standard" >
+  <control namespace="DocPulseAI" constructor="DocumentAnalyzer" version="1.0.3" display-name-key="DocumentAnalyzer" description-key="AI-Powered Document Analyzer with drag-drop upload" control-type="standard" >
     <external-service-usage enabled="true">
       <domain>*.openai.azure.com</domain>
       <domain>*.cognitiveservices.azure.com</domain>

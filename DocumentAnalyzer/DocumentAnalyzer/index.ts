@@ -288,15 +288,44 @@ export class DocumentAnalyzer implements ComponentFramework.StandardControl<IInp
      * Create Note (annotation) attachment in Dynamics 365
      */
     private async createNoteAttachment(file: File): Promise<string> {
-        const entityReference = (this._context as any).page?.entityReference;
+        // Try multiple ways to get entity reference
+        let entityReference = (this._context as any).page?.entityReference;
         
-        if (!entityReference) {
-            throw new Error("Cannot create note: No entity reference found");
+        // Fallback 1: Try mode.contextInfo
+        if (!entityReference && (this._context as any).mode?.contextInfo) {
+            const contextInfo = (this._context as any).mode.contextInfo;
+            if (contextInfo.entityId && contextInfo.entityTypeName) {
+                entityReference = {
+                    id: contextInfo.entityId,
+                    etn: contextInfo.entityTypeName
+                };
+            }
+        }
+        
+        // Fallback 2: Try parameters
+        if (!entityReference && (this._context as any).parameters) {
+            const params = (this._context as any).parameters;
+            if (params.entityId && params.entityTypeName) {
+                entityReference = {
+                    id: params.entityId,
+                    etn: params.entityTypeName
+                };
+            }
+        }
+        
+        if (!entityReference || !entityReference.id || !entityReference.etn) {
+            throw new Error("Cannot create note: No entity reference found. Please ensure the control is placed on a form with a valid record.");
         }
         
         // Convert file to base64
         const base64 = await this.fileToBase64(file);
         const base64Content = base64.split(',')[1]; // Remove data:mime;base64, prefix
+        
+        // Clean the entity ID (remove curly braces if present)
+        const cleanId = entityReference.id.replace(/[{}]/g, '');
+        
+        // Normalize entity logical name (remove plural 's' if needed)
+        const entityLogicalName = entityReference.etn.toLowerCase();
         
         // Create annotation (note) record
         const annotation: any = {
@@ -304,40 +333,107 @@ export class DocumentAnalyzer implements ComponentFramework.StandardControl<IInp
             notetext: `Document uploaded for AI analysis on ${new Date().toLocaleString()}`,
             filename: file.name,
             documentbody: base64Content,
-            mimetype: file.type
+            mimetype: file.type || 'application/octet-stream'
         };
         
-        // Add dynamic binding property
-        const bindingProperty = `objectid_${entityReference.etn}@odata.bind`;
-        annotation[bindingProperty] = `/${entityReference.etn}s(${entityReference.id.replace('{', '').replace('}', '')})`;
-        
+        // Try different binding approaches
         try {
+            // Approach 1: Use dynamic binding with plural form
+            const bindingProperty = `objectid_${entityLogicalName}@odata.bind`;
+            annotation[bindingProperty] = `/${entityLogicalName}s(${cleanId})`;
+            
             const result = await this._context.webAPI.createRecord("annotation", annotation);
             return result.id;
-        } catch (error) {
-            console.error("Error creating note:", error);
-            throw new Error(`Failed to create attachment: ${this.getErrorMessage(error)}`);
+        } catch (error: any) {
+            console.log("Binding approach 1 failed, trying alternative...", error);
+            
+            // Approach 2: Use regardingobjectid with entity collection name lookup
+            try {
+                const annotation2: any = {
+                    subject: `Document Analysis: ${file.name}`,
+                    notetext: `Document uploaded for AI analysis on ${new Date().toLocaleString()}`,
+                    filename: file.name,
+                    documentbody: base64Content,
+                    mimetype: file.type || 'application/octet-stream',
+                    "objectid_annotation@odata.bind": `/${this.getEntitySetName(entityLogicalName)}(${cleanId})`
+                };
+                
+                const result = await this._context.webAPI.createRecord("annotation", annotation2);
+                return result.id;
+            } catch (error2) {
+                console.error("Error creating note (all approaches failed):", error2);
+                throw new Error(`Failed to create attachment: ${this.getErrorMessage(error2)}`);
+            }
         }
+    }
+    
+    /**
+     * Get entity set name (plural form) from logical name
+     */
+    private getEntitySetName(entityLogicalName: string): string {
+        // Common irregular plurals in Dynamics 365
+        const irregularPlurals: Record<string, string> = {
+            'account': 'accounts',
+            'contact': 'contacts',
+            'lead': 'leads',
+            'opportunity': 'opportunities',
+            'case': 'incidents',
+            'incident': 'incidents',
+            'activity': 'activities',
+            'quote': 'quotes',
+            'order': 'salesorders',
+            'invoice': 'invoices',
+            'product': 'products',
+            'pricelevel': 'pricelevels',
+            'user': 'systemusers',
+            'systemuser': 'systemusers',
+            'team': 'teams',
+            'businessunit': 'businessunits',
+            'organization': 'organizations'
+        };
+        
+        const lowerName = entityLogicalName.toLowerCase();
+        
+        // Check for irregular plurals
+        if (irregularPlurals[lowerName]) {
+            return irregularPlurals[lowerName];
+        }
+        
+        // Check if already plural
+        if (lowerName.endsWith('s') || lowerName.endsWith('es')) {
+            return lowerName;
+        }
+        
+        // Default: add 's'
+        return lowerName + 's';
     }
 
     /**
      * Extract text from document using Azure Document Intelligence (Form Recognizer)
      */
     private async extractTextFromDocument(file: File): Promise<string> {
-        // If Document Intelligence is configured, use it for better OCR
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        
+        // If Document Intelligence is configured, try to use it for better OCR
         if (this._documentIntelligenceEndpoint && this._documentIntelligenceKey) {
-            return await this.extractWithDocumentIntelligence(file);
+            try {
+                console.log('[DocPulseAI] Attempting Document Intelligence extraction...');
+                return await this.extractWithDocumentIntelligence(file);
+            } catch (error) {
+                console.warn('[DocPulseAI] Document Intelligence failed, falling back to vision-only:', error);
+                // Continue to fallback methods below
+            }
         }
         
         // Fallback: For images, use Azure OpenAI Vision
         // For PDFs without Document Intelligence, return instructions for manual review
-        const fileExtension = file.name.split('.').pop()?.toLowerCase();
-        
         if (fileExtension === 'pdf') {
-            return `[PDF Document: ${file.name}]\nNote: Configure Azure Document Intelligence endpoint for automatic text extraction from PDFs.`;
+            console.log('[DocPulseAI] PDF without Document Intelligence - using vision-only analysis');
+            return `[PDF Document: ${file.name}]\nNote: For better text extraction from PDFs, configure Azure Document Intelligence endpoint.`;
         }
         
         // For images, we'll pass them directly to GPT-4 Vision
+        console.log('[DocPulseAI] Image file - will use vision capabilities');
         return "[Image document - will be analyzed using vision capabilities]";
     }
 
@@ -345,22 +441,42 @@ export class DocumentAnalyzer implements ComponentFramework.StandardControl<IInp
      * Extract text using Azure Document Intelligence
      */
     private async extractWithDocumentIntelligence(file: File): Promise<string> {
+        // Validate and clean endpoint URL
+        if (!this._documentIntelligenceEndpoint || !this._documentIntelligenceKey) {
+            throw new Error('Document Intelligence endpoint and key are required');
+        }
+        
+        // Clean endpoint URL - remove trailing slash and any path
+        let cleanEndpoint = this._documentIntelligenceEndpoint.trim();
+        cleanEndpoint = cleanEndpoint.replace(/\/$/, ''); // Remove trailing slash
+        
+        // Remove any existing path after the domain
+        const urlParts = cleanEndpoint.split('/');
+        if (urlParts.length > 3) {
+            // Keep only protocol and domain: https://your-resource.cognitiveservices.azure.com
+            cleanEndpoint = urlParts.slice(0, 3).join('/');
+        }
+        
         const arrayBuffer = await file.arrayBuffer();
-        const url = `${this._documentIntelligenceEndpoint}/formrecognizer/documentModels/prebuilt-read:analyze?api-version=2023-07-31`;
+        const url = `${cleanEndpoint}/formrecognizer/documentModels/prebuilt-read:analyze?api-version=2023-07-31`;
+        
+        console.log('[DocPulseAI] Document Intelligence URL:', url);
         
         try {
             // Submit document for analysis
             const submitResponse = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': file.type,
+                    'Content-Type': file.type || 'application/pdf',
                     'Ocp-Apim-Subscription-Key': this._documentIntelligenceKey
                 },
                 body: arrayBuffer
             });
             
             if (!submitResponse.ok) {
-                throw new Error(`Document Intelligence API error: ${submitResponse.statusText}`);
+                const errorText = await submitResponse.text();
+                console.error('[DocPulseAI] Document Intelligence API error:', errorText);
+                throw new Error(`Document Intelligence API error: ${submitResponse.status} - ${errorText}`);
             }
             
             // Get operation location from response headers
@@ -369,8 +485,10 @@ export class DocumentAnalyzer implements ComponentFramework.StandardControl<IInp
                 throw new Error('No operation location returned from Document Intelligence');
             }
             
+            console.log('[DocPulseAI] Polling operation location:', operationLocation);
+            
             // Poll for results
-            let analysisResult = await this.pollDocumentIntelligenceResults(operationLocation);
+            const analysisResult = await this.pollDocumentIntelligenceResults(operationLocation);
             
             // Extract text from pages
             let extractedText = '';
@@ -381,8 +499,9 @@ export class DocumentAnalyzer implements ComponentFramework.StandardControl<IInp
             return extractedText || 'No text could be extracted from the document.';
             
         } catch (error) {
-            console.error('Document Intelligence extraction error:', error);
-            throw new Error(`Text extraction failed: ${this.getErrorMessage(error)}`);
+            console.error('[DocPulseAI] Document Intelligence extraction error:', error);
+            // Don't fail completely - fall back to vision-only analysis
+            throw error;
         }
     }
 
